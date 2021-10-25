@@ -9,8 +9,7 @@ class ConfigHelper(object):
         self.pc_pass = config["prisma_cloud"]["password"]
         self.pc_cust = config["prisma_cloud"]["customer_name"]
         self.pc_api_base = config["prisma_cloud"]["api_base"]
-        self.pc_file_name = config["prisma_cloud"]["filename"]
-        self.pc_rql = config["prisma_cloud"]["rql"]
+        self.pc_api_port = config["prisma_cloud"]["api_port"]
 
     @classmethod
     def read_yml(self, f):

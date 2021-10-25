@@ -3,5 +3,4 @@ prisma_cloud:
   password: ""
   customer_name:
   api_base: "api.prismacloud.io"
-  filename: ""
-  rql: "config from cloud.resource where api.name = 'aws-ec2-describe-instances'"
+  api_port: "443"
