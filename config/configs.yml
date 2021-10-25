@@ -2,5 +2,5 @@ prisma_cloud:
   username: ""
   password: ""
   customer_name:
-  api_base: "api.prismacloud.io"
+  api_base: "console.ebeuerlein.lab.twistlock.com"
   api_port: "443"
