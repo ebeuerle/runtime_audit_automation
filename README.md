@@ -4,12 +4,13 @@ Version: *1.0*
 Author: *Eddie Beuerlein*
 
 ### Summary
-This script will connect to compute console via a provided local username/password
-Review all current runtime audit events (max 25K)
-Extract "Unexpected Process" and "Unexpected Listening Port" entries
-For Unexpected Processes, we will extract out a list of unique processes
-For Unexpected Ports, we will extract out a list of unique ports
-For each runtime rule that is impacted, we will add the list of binaries/ports to the allow list
+This script will:
+1.  connect to compute console via a provided local username/password
+2. Review all current runtime audit events (max 25K)
+3. Extract "Unexpected Process" and "Unexpected Listening Port" entries
+4. For Unexpected Processes, we will extract out a list of unique processes
+5. For Unexpected Ports, we will extract out a list of unique ports
+6. For each runtime rule that is impacted, we will add the list of binaries/ports to the allow list
 
 ### Requirements and Dependencies
 
