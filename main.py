@@ -2,6 +2,7 @@ import lib
 import sys
 import json
 from loguru import logger
+from collections import defaultdict
 
 class RT_audit_auto():
     def __init__(self):
@@ -22,12 +23,13 @@ class RT_audit_auto():
 
     def extract_runtime_details(self,rules):
         active_rt = {}
+        temp_rt = {}
         count = 0
         for rule in rules['rules']:
             if 'disabled' not in rule:
-                active_rt = { rule['name'] :{ "proc_whitelist": rule['processes']['whitelist'], "port_whitelist": rule['network']['whitelistListeningPorts']}}
+                temp_rt = { rule['name'] :{ "proc_whitelist": rule['processes']['whitelist'], "port_whitelist": rule['network']['whitelistListeningPorts']}}
+                active_rt.update(temp_rt)
                 count += 1
-        #print(active_rt)
         logger.info("Active runtime rules: {}", count)
         if count == 0:
             logger.info("No active runtime rules - please add one to ensure this script will work.")
@@ -62,10 +64,34 @@ class RT_audit_auto():
         
         return proc_audits
 
+    def extract_processes(self,proc_audits):
+        parsed_proc = defaultdict(set) 
+        for proc in proc_audits:
+            if proc['attackType'] == "unexpectedProcess":
+                parsed_proc[proc['ruleName']].add(proc['processPath'])
+        logger.info("Extracting out unique list of processes per rule name...")
+        
+        return parsed_proc
+
+    def merge_runtime_data(self, active_runtime_rules, parsed_proc):
+        for rt_name,rt_procs_ports in active_runtime_rules.items():
+            for audit_name, audit_procs in parsed_proc.items():
+                if rt_name == audit_name:
+                    #adds the processees from audit events to runtime rule dict
+                    rt_procs_ports['proc_whitelist'] += audit_procs
+        for rt_name,rt_procs_ports in active_runtime_rules.items():
+            #dedup processes via set and then put it back as a list
+            rt_procs_ports['proc_whitelist'] = set(rt_procs_ports['proc_whitelist']) 
+            rt_procs_ports['proc_whitelist'] = list(rt_procs_ports['proc_whitelist'])
+        logger.info("Merging audit runtime processes with runtime rules")
+        return active_runtime_rules
+
     def run(self):
         runtime_rules = self.get_runtime_rules()
         active_runtime_rules = self.extract_runtime_details(runtime_rules)
-        runtime_audits = self.pull_runtime_audits()
+        proc_audits = self.pull_runtime_audits()
+        parsed_proc = self.extract_processes(proc_audits)
+        new_rt_rule_data = self.merge_runtime_data(active_runtime_rules, parsed_proc)
 
 def main():
     RT_audit_sync = RT_audit_auto()
