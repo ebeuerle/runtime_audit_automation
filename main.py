@@ -1,6 +1,7 @@
 import lib
 import sys
 import json
+import copy
 from loguru import logger
 from collections import defaultdict
 
@@ -22,6 +23,7 @@ class RT_audit_auto():
             raise Exception("Failed to get runtime rules, error: {}", resp.status_code)
 
     def extract_runtime_details(self,rules):
+        rules = copy.deepcopy(rules)
         active_rt = {}
         temp_rt = {}
         count = 0
@@ -70,7 +72,7 @@ class RT_audit_auto():
             if proc['attackType'] == "unexpectedProcess":
                 parsed_proc[proc['ruleName']].add(proc['processPath'])
         logger.info("Extracting out unique list of processes per rule name...")
-        
+
         return parsed_proc
 
     def merge_runtime_data(self, active_runtime_rules, parsed_proc):
@@ -78,20 +80,39 @@ class RT_audit_auto():
             for audit_name, audit_procs in parsed_proc.items():
                 if rt_name == audit_name:
                     #adds the processees from audit events to runtime rule dict
-                    rt_procs_ports['proc_whitelist'] += audit_procs
+                    rt_procs_ports['proc_whitelist'].extend(audit_procs)
         for rt_name,rt_procs_ports in active_runtime_rules.items():
             #dedup processes via set and then put it back as a list
             rt_procs_ports['proc_whitelist'] = set(rt_procs_ports['proc_whitelist']) 
             rt_procs_ports['proc_whitelist'] = list(rt_procs_ports['proc_whitelist'])
+
         logger.info("Merging audit runtime processes with runtime rules")
+
         return active_runtime_rules
+
+    def combine_put_new_rules(self, runtime_rules, new_runtime_data):
+        for rule in runtime_rules['rules']:
+            for name, procs in new_runtime_data.items():
+                if rule['name'] == name:
+                    rule['processes']['whitelist'] = procs['proc_whitelist']
+        logger.info("Runtime rules are ready to be pushed to console")
+
+        self.url = "https://" + self.config.pc_api_base + ":" + self.config.pc_api_port + "/api/v1/policies/runtime/container"
+        self.pc_sess.authenticate_client()
+        resp = self.pc_sess.client.put(self.url, json.dumps(runtime_rules))
+        if resp.ok:
+            logger.info("Successfully pushed revised runtime rules to console")
+        else:
+            raise Exception("Failed to push revised runtime rules, error: {}", resp.status_code)
+
 
     def run(self):
         runtime_rules = self.get_runtime_rules()
         active_runtime_rules = self.extract_runtime_details(runtime_rules)
         proc_audits = self.pull_runtime_audits()
         parsed_proc = self.extract_processes(proc_audits)
-        new_rt_rule_data = self.merge_runtime_data(active_runtime_rules, parsed_proc)
+        new_runtime_data = self.merge_runtime_data(active_runtime_rules, parsed_proc)
+        self.combine_put_new_rules(runtime_rules,new_runtime_data)
 
 def main():
     RT_audit_sync = RT_audit_auto()
